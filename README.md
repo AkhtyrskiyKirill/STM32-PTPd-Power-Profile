@@ -1,64 +1,43 @@
-# PTPD v2 projects for ST NUCLEO-F429ZI development board
+# PTPD master and slave projects with Power Profile support for ST NUCLEO-F429ZI
 
-This code improves upon my previous PTPD example libraries for STM32 devices in the following ways:
+This code implements IEEE1588-2008 PTP protocol with Power Profile on STM32F429ZI microcontroller.
+It improves previous versions of PTP projects for STM32 in several ways:
 
- - Provides an example of a PTPD master and slave
- - Projects for ST NUCLEO-F429ZI dev board which is more widely available
- - Ported PTPD v2 code has been improved and has better comments
- - Supports the STM32 F4 HAL library rather than the older standard library
- - Project files for Keil uVision and Linux friendly Makefile
- - Improved telnet and serial shell for testing
- - Easier network configuration in main.c
+ - Provides support of PTP Power Profile (PTP messages are transported over IEEE 802.3 / Ethernet - 
+ L2 layer of OSI model).
+ - Using Power Profile allows to reach synchronization accuracy of ±100 nsec offset between
+ master and slave clocks.
+ - Improves synchronization accuracy when using default profile (Transport of PTP messages over UDP/IP): 
+ offset between master and slave is reduced down to ±500 nsec.
+ - Fixes Peer delay mechanism of PTP (P2P mode).
+ - Configures the 1PPS signal on PB5 pin of the MCU (can be turned off in ptpd_init function).
 
-## PTPD Slave
+## Power Profile configuration
 
-/projects/nucleo_ptpd_slave
+To turn on the Power Profile support, uncomment the "#define PTPD_POWER_PROFILE" line
+in ptpd.h file. After that all PTP messages will be sent and received over L2 layer of OSI model.
 
-Using the slave example is fairly simple. Modify the network configuration at the
-bottom of the main.c file, compile and flash to a NUCLEO-F429ZI development board.
-Then plug the board into a network with a functioning PTPD master configured.
-Power can then be applied and the system shell accessed via the virtual serial port
-over the debug USB connection or via telnet to the board IP address.
+## Experimental study
 
-Once in the shell, the 'dmesg' command should give you the following output
-after a few minutes indicating the PTPD slave is configured and synchronized
-with the PTPD master on the network.
+The functionality of the master and slave projects was tested using two NUCLEO-F429ZI 
+development boards connected to each other via Ethernet in a local network through a 
+TP-Link TL-WR842N switch. The Power Profile support was turned on and devices used 
+peer delay mechanism of synchronization. To verify the synchronization of 
+the internal clocks of two boards, 1PPS signals were output from each board. 
+The signals were captured using a RIGOL MSO2302 oscilloscope.
 
-    > dmesg
-    <134>Jan  1 00:00:01 firmware: NETWORK: address is 192.168.1.75
-    <134>Jan  1 00:00:01 firmware: NETWORK: netmask is 255.255.255.0
-    <134>Jan  1 00:00:01 firmware: NETWORK: gateway is 192.168.1.1
-    <134>Jan  1 00:00:01 firmware: NETWORK: link is up
-    <133>Jan  1 00:00:01 firmware: PTPD: entering INITIALIZING state
-    <133>Jan  1 00:00:01 firmware: PTPD: entering LISTENING state
-    <134>Jan  1 00:00:01 firmware: TELNET: waiting for connection
-    <133>Jan  1 00:00:02 firmware: PTPD: entering UNCALIBRATED state
-    <133>May 13 05:18:05 firmware: PTPD: setting Thu May 13 05:18:05 UTC 2021
-    <133>May 13 05:18:20 firmware: PTPD: entering SLAVE state
-    >
+![Screenshot](https://github.com/AkhtyrskiyKirill/STM32-PTPd-Power-Profile/blob/main/imgs/1PPS_PowerProfile.png)
 
-The 'ptpd' command will give the current status of the PTPD synchronization.
+The results of multiple experiments showed that the rising edges of the 1PPS signals on the 
+two devices were synchronized with an accuracy of no worse than ±100 ns.
 
-    > ptpd
-    master id: 000db9fffe0cde34
-    state: slave
-    mode: end to end
-    path delay: 104969 nsec
-    offset: -4866 nsec
-    drift: -3.620 ppm
-    >
+## Contact information
 
-## PTPD Master
+Authors of the project:
+Akhtyrskiy Kirill
+Kabirov Vagiz
 
-/projects/nucleo_ptpd_master
+If you want to contribute to the improvement and development of the project please 
+send comments, feature requests, bug reports, or patches.
 
-Note the PTPD master example synchronizes off the GPS pulse-per-second signal from
-a Venus638FLPx GPS Receiver which was readily available in the past, but may be
-harder to find these days. I would welcome enhancements that support a wider
-variety of GPS devices.
-
-With the master project, the precision timer on the STM32F4 MCU is intended to
-be synchronized with the GPS pulse-per-second signal and any slaves on the network
-are then synchronized against the precision timer.
-
-The master code is not very well tested and your mileage may vary.
+Contact email: k.akhtirsky@gmail.com
