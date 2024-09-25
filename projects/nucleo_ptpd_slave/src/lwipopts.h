@@ -6,6 +6,11 @@
  * them here. */
 #define LWIP_PTPD             1
 
+//#ifdef LWIP_PTPD
+// Optional Power Profile support
+//#define LWIP_PTPD_POWER_PROFILE 1
+//#endif
+
 /* Include the lwIP options file common to all projects. */
 #include "lwipopts_shared.h"
 

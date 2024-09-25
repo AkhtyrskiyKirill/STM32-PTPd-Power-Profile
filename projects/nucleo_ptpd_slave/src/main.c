@@ -99,7 +99,6 @@ int main(void)
 {
   // Initialize the STM32 HAL (hardware abstraction layer) system.
   HAL_SystemInit();
-
   // Initialize external interrupt handling.
   extint_init();
 
@@ -178,7 +177,7 @@ bool network_config_use_dhcp(void)
 // System configurable network IP address.
 ip4_addr_t network_config_address(void)
 {
-  return network_str_to_address("192.168.1.75");
+  return network_str_to_address("192.168.0.75");
 }
 
 // System configurable netmask.
@@ -190,7 +189,7 @@ ip4_addr_t network_config_netmask(void)
 // System configurable gateway IP address.
 ip4_addr_t network_config_gateway(void)
 {
-  return network_str_to_address("192.168.1.1");
+  return network_str_to_address("192.168.0.1");
 }
 
 // System configurable hardware address.

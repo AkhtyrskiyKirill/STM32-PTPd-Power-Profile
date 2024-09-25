@@ -26,7 +26,9 @@
 // PTP frame parsing helper macros.
 #define ENET_PTP1588_EVENT_PORT 319U
 #define ENET_PTP1588_GENERAL_PORT 320U
-#define ENET_PTP1588_ETHL2_MSGTYPE 3U
+#define ENET_PTP1588_ETHL2_MSGTYPE_EVENT 3U
+#define ENET_PTP1588_ETHL2_MSGTYPE_GENERAL_L 8U
+#define ENET_PTP1588_ETHL2_MSGTYPE_GENERAL_H 0xDU
 #define ENET_PTP1588_IPVERSION_OFFSET 0x0EU
 #define ENET_PTP1588_ETHL2_MSGTYPE_OFFSET 0x0EU
 #define ENET_PTP1588_ETHL2_PACKETTYPE_OFFSET 0x0CU
@@ -159,7 +161,6 @@ static bool is_ptp1588_frame(uint8_t *data)
   uint8_t *buffer = data;
   uint16_t ptp_type;
   bool is_ptp_frame = false;
-
   // Check for VLAN frame.
   if (*(uint16_t *)(buffer + ENET_PTP1588_ETHL2_PACKETTYPE_OFFSET) == lwip_htons(ENET_8021QVLAN))
   {
@@ -167,11 +168,14 @@ static bool is_ptp1588_frame(uint8_t *data)
   }
 
   ptp_type = *((uint16_t *)(buffer + ENET_PTP1588_ETHL2_PACKETTYPE_OFFSET));
+	uint8_t msgType;
   switch (lwip_htons(ptp_type))
   {
     // Ethernet layer 2.
     case ENET_ETHERNETL2:
-      if (*(uint8_t *)(buffer + ENET_PTP1588_ETHL2_MSGTYPE_OFFSET) <= ENET_PTP1588_ETHL2_MSGTYPE)
+			msgType = (*(uint8_t *)(buffer + ENET_PTP1588_ETHL2_MSGTYPE_OFFSET) & 0x0F);
+      if ((msgType <= ENET_PTP1588_ETHL2_MSGTYPE_EVENT) || ((msgType >= ENET_PTP1588_ETHL2_MSGTYPE_GENERAL_L) && (msgType <= ENET_PTP1588_ETHL2_MSGTYPE_GENERAL_H)))
+			//if (*(uint8_t *)(buffer + ENET_PTP1588_ETHL2_MSGTYPE_OFFSET) <= ENET_PTP1588_ETHL2_MSGTYPE)
       {
         // This is a PTP frame.
         is_ptp_frame = true;
@@ -950,7 +954,8 @@ void ethernetif_counts(uint32_t *recv_count, uint32_t *recv_bytes, uint32_t *sen
 
 #if LWIP_PTPD
 // Get the TX time associated with the packet buffer.
-void ethernetif_get_tx_timestamp(struct pbuf *p)
+void 
+	ethernetif_get_tx_timestamp(struct pbuf *p)
 {
   // Lock the Ethernet mutex.
   osMutexAcquire(ethernetif_mutex_id, osWaitForever);

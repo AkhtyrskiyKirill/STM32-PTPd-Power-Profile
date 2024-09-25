@@ -16,6 +16,9 @@
 
 #if LWIP_PTPD
 
+// If Power Profile is used
+#define PTPD_POWER_PROFILE
+
 /* #define PTPD_DBGVV */
 /* #define PTPD_DBGV */
 /* #define PTPD_DBG */
@@ -125,6 +128,11 @@ ssize_t ptpd_net_send_general(NetPath*, const octet_t*, int16_t);
 ssize_t ptpd_net_send_peer_general(NetPath*, const octet_t*, int16_t);
 ssize_t ptpd_net_send_peer_event(NetPath*, const octet_t*, int16_t, TimeInternal*);
 void ptpd_net_empty_event_queue(NetPath *netPath);
+
+#ifdef PTPD_POWER_PROFILE
+// PTP Power Profile message handler
+void ptpd_net_input(struct pbuf *p, struct netif *netif);
+#endif
 
 // Precions time adjustment functions.
 void ptpd_servo_init_clock(PtpClock*);

@@ -289,6 +289,10 @@ void ptpd_servo_update_peer_delay(PtpClock *ptp_clock, const TimeInternal *corre
 
   ptpd_sub_time(&ptp_clock->portDS.peerMeanPathDelay, &ptp_clock->portDS.peerMeanPathDelay, correction_field);
   ptpd_div2_time(&ptp_clock->portDS.peerMeanPathDelay);
+	//TimeInternal corr;
+	//corr.seconds = 0;
+	//corr.nanoseconds = 58200;
+	//ptpd_sub_time(&ptp_clock->portDS.peerMeanPathDelay, &ptp_clock->portDS.peerMeanPathDelay, &corr);
 
   // Filter delay.
   if (ptp_clock->portDS.peerMeanPathDelay.seconds != 0)

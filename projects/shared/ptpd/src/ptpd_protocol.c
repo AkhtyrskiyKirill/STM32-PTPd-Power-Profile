@@ -1126,10 +1126,10 @@ static void issue_delay_req_timer_expired(PtpClock *ptp_clock)
   switch (ptp_clock->portDS.delayMechanism)
   {
     case E2E:
-      if (ptp_clock->portDS.portState != PTP_SLAVE)
-      {
-        break;
-      }
+			if (ptp_clock->portDS.portState != PTP_SLAVE)
+			{
+				break;
+			}
       if (ptpd_timer_expired(DELAYREQ_INTERVAL_TIMER))
       {
         ptpd_timer_start(DELAYREQ_INTERVAL_TIMER, ptpd_get_rand(pow2ms(ptp_clock->portDS.logMinDelayReqInterval + 1)));
@@ -1146,7 +1146,6 @@ static void issue_delay_req_timer_expired(PtpClock *ptp_clock)
         issue_peer_delay_req(ptp_clock);
       }
       break;
-
     default:
         break;
   }
@@ -1175,7 +1174,12 @@ static void issue_sync(PtpClock *ptp_clock)
 {
   Timestamp origin_timestamp;
   TimeInternal internal_time;
-
+	
+	// Check
+	//origin_timestamp.nanosecondsField = 0;
+	//origin_timestamp.secondsField.lsb = 0;
+	//origin_timestamp.secondsField.msb = 0;
+	
   // Try to predict outgoing time stamp.
   ptpd_get_time(&internal_time);
   ptpd_from_internal_time(&internal_time, &origin_timestamp);
@@ -1225,7 +1229,7 @@ static void issue_delay_req(PtpClock *ptp_clock)
 {
   Timestamp origin_timestamp;
   TimeInternal internal_time;
-
+	
   ptpd_get_time(&internal_time);
   ptpd_from_internal_time(&internal_time, &origin_timestamp);
 
@@ -1260,6 +1264,11 @@ static void issue_peer_delay_req(PtpClock *ptp_clock)
   Timestamp origin_timestamp;
   TimeInternal internal_time;
 
+		// Check
+	//origin_timestamp.nanosecondsField = 0;
+	//origin_timestamp.secondsField.lsb = 0;
+	//origin_timestamp.secondsField.msb = 0;
+	
   ptpd_get_time(&internal_time);
   ptpd_from_internal_time(&internal_time, &origin_timestamp);
 
@@ -1288,8 +1297,10 @@ static void issue_peer_delay_req(PtpClock *ptp_clock)
 static void issue_peer_delay_resp(PtpClock *ptp_clock, TimeInternal *time, const MsgHeader *delay_req_header)
 {
   Timestamp request_receipt_timestamp;
-
-  ptpd_from_internal_time(time, &request_receipt_timestamp);
+	
+  //ptpd_from_internal_time(time, &request_receipt_timestamp);
+	ptpd_from_internal_time(time, &request_receipt_timestamp);
+	
   ptpd_msg_pack_peer_delay_resp(ptp_clock->msgObuf, delay_req_header, &request_receipt_timestamp);
 
   if (!ptpd_net_send_peer_event(&ptp_clock->netPath, ptp_clock->msgObuf, PDELAY_RESP_LENGTH, time))
@@ -1333,7 +1344,11 @@ static void issue_peer_delay_resp_follow_up(PtpClock *ptp_clock, const TimeInter
 {
   Timestamp response_origin_timestamp;
 
-  ptpd_from_internal_time(time, &response_origin_timestamp);
+	//TimeInternal pdelay_resp_time;
+	//ptpd_get_time(&pdelay_resp_time);
+	//ptpd_from_internal_time(&pdelay_resp_time, &response_origin_timestamp);
+
+	ptpd_from_internal_time(time, &response_origin_timestamp);
   ptpd_msg_pack_peer_delay_resp_follow_up(ptp_clock->msgObuf, delay_req_header, &response_origin_timestamp);
 
   if (!ptpd_net_send_peer_general(&ptp_clock->netPath, ptp_clock->msgObuf, PDELAY_RESP_FOLLOW_UP_LENGTH))

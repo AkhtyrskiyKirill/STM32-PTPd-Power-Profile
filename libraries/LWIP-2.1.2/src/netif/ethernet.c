@@ -60,6 +60,10 @@
 #include LWIP_HOOK_FILENAME
 #endif
 
+//#ifdef LWIP_PTPD_POWER_PROFILE
+#include "ptpd.h"
+//#endif 
+
 const struct eth_addr ethbroadcast = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 const struct eth_addr ethzero = {{0, 0, 0, 0, 0, 0}};
 
@@ -206,6 +210,30 @@ ethernet_input(struct pbuf *p, struct netif *netif)
       }
       break;
 #endif /* LWIP_IPV4 && LWIP_ARP */
+			
+#ifdef PTPD_POWER_PROFILE
+			/* PTP packet? */
+		case PP_HTONS(ETHTYPE_PTP):
+			
+		  /* skip Ethernet header (min. size checked above) */
+      if (pbuf_remove_header(p, next_hdr_offset)) {
+				/*
+        LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_WARNING,
+                    ("ethernet_input: ARP response packet dropped, too short (%"U16_F"/%"U16_F")\n",
+                     p->tot_len, next_hdr_offset));
+        LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("Can't move over header in packet"));
+        ETHARP_STATS_INC(etharp.lenerr);
+        ETHARP_STATS_INC(etharp.drop);
+				*/
+        goto free_and_return;
+      } else {
+        /* pass p to ptpd_net module */
+        ptpd_net_input(p, netif);
+      }
+		
+			break;
+
+#endif
 #if PPPOE_SUPPORT
     case PP_HTONS(ETHTYPE_PPPOEDISC): /* PPP Over Ethernet Discovery Stage */
       pppoe_disc_input(netif, p);

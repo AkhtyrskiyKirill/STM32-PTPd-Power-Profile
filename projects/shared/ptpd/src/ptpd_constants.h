@@ -20,9 +20,9 @@ extern "C" {
 #define DEFAULT_DOMAIN_NUMBER           0
 #define DEFAULT_DELAY_MECHANISM         E2E
 #define DEFAULT_AP                      2
-#define DEFAULT_AI                      16
+#define DEFAULT_AI                      16		// Def 16
 #define DEFAULT_DELAY_S                 6       // Exponencial smoothing - 2^s
-#define DEFAULT_OFFSET_S                1       // Exponencial smoothing - 2^s
+#define DEFAULT_OFFSET_S                0       // Exponencial smoothing - 2^s
 #define DEFAULT_ANNOUNCE_INTERVAL       1       // 0 in 802.1AS
 #define DEFAULT_UTC_OFFSET              34
 #define DEFAULT_UTC_VALID               false
@@ -43,10 +43,26 @@ extern "C" {
 #define DEFAULT_MAX_FOREIGN_RECORDS     5
 #define DEFAULT_PARENTS_STATS           false
 #define DEFAULT_TWO_STEP_FLAG           true    // Transmitting only SYNC message or SYNC and FOLLOW UP.
-#define DEFAULT_TIME_SOURCE             GPS
+#define DEFAULT_TIME_SOURCE             INTERNAL_OSCILLATOR
 #define DEFAULT_TIME_TRACEABLE          false   // Time derived from atomic clock?
 #define DEFAULT_FREQUENCY_TRACEABLE     false   // Frequency derived from frequency standard?
 #define DEFAULT_TIMESCALE               ARB_TIMESCALE // PTP_TIMESCALE or ARB_TIMESCALE
+
+// Default multicast mac address for Power Profile
+#define DEFAULT_MULTICAST_MAC0          0x01
+#define DEFAULT_MULTICAST_MAC1          0x1B
+#define DEFAULT_MULTICAST_MAC2          0x19
+#define DEFAULT_MULTICAST_MAC3          0x00
+#define DEFAULT_MULTICAST_MAC4          0x00
+#define DEFAULT_MULTICAST_MAC5          0x00
+
+// Default peer multicast mac address for Power Profile
+#define PEER_MULTICAST_MAC0          0x01
+#define PEER_MULTICAST_MAC1          0x80
+#define PEER_MULTICAST_MAC2          0xC2
+#define PEER_MULTICAST_MAC3          0x00
+#define PEER_MULTICAST_MAC4          0x00
+#define PEER_MULTICAST_MAC5          0x0E
 
 #define DEFAULT_CALIBRATED_OFFSET_NS    10000     // Offset from master < 10us -> calibrated
 #define DEFAULT_UNCALIBRATED_OFFSET_NS  1000000   // Offset from master > 1000us -> uncalibrated

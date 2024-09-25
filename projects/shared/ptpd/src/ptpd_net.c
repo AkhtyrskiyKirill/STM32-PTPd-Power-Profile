@@ -6,6 +6,15 @@
 #include "ptpd.h"
 #include "ethernetif.h"
 
+#ifdef PTPD_POWER_PROFILE
+#include "lwip/netif.h"
+#include "netif/ethernet.h"
+
+struct ptpd_pcb ptpd_pcb_event;
+struct ptpd_pcb ptpd_pcb_general;
+
+#endif
+
 #if LWIP_PTPD
 
 // Initialize the network queue.
@@ -86,6 +95,8 @@ static bool ptpd_net_queue_check(BufQueue  *queue)
 
   return retval;
 }
+
+#ifndef PTPD_POWER_PROFILE
 
 // Find interface to be used. uuid will be filled with MAC address of the interface.
 // The IPv4 address of the interface will be returned.
@@ -271,6 +282,195 @@ bool ptpd_net_shutdown(NetPath *net_path)
   return true;
 }
 
+#else
+
+// Find interface to be used. uuid will be filled with MAC address of the interface.
+static void ptpd_find_iface(const octet_t *ifaceName, octet_t *uuid, NetPath *net_path)
+{
+  struct netif *iface;
+
+  // Use the default interface.
+  iface = netif_default;
+
+  // Copy the interface hardware address.
+  memcpy(uuid, iface->hwaddr, iface->hwaddr_len);
+
+}
+
+// Process an incoming message on the event port.
+static void ptpd_net_event_callback(void *arg, struct pbuf *p)
+{
+  NetPath *net_path = (NetPath *) arg;
+
+  // Place the incoming message on the event port queue.
+  if (ptpd_net_queue_put(&net_path->eventQ, p))
+  {
+    // Alert the PTP thread there is now something to do.
+    ptpd_alert();
+  }
+  else
+  {
+    pbuf_free(p);
+    syslog_printf(SYSLOG_ERROR, "PTPD: event port queue full");
+    ERROR("PTPD: event port queue full\n");
+  }
+}
+
+// Process an incoming message on the general port.
+static void ptpd_net_general_callback(void *arg, struct pbuf *p)
+{
+  NetPath *net_path = (NetPath *) arg;
+
+  // Place the incoming message on the event port queue.
+  if (ptpd_net_queue_put(&net_path->generalQ, p))
+  {
+    // Alert the PTP thread there is now something to do.
+    ptpd_alert();
+  }
+  else
+  {
+    pbuf_free(p);
+    syslog_printf(SYSLOG_ERROR, "PTPD: general port queue full");
+    ERROR("PTPD: general port queue full\n");
+  }
+}
+
+// Start Power Profile
+bool ptpd_net_init(NetPath *net_path, PtpClock *ptp_clock)
+{
+
+  // Initialize the buffer queues.
+  ptpd_net_queue_init(&net_path->eventQ);
+  ptpd_net_queue_init(&net_path->generalQ);
+
+	// Find a network interface.
+  ptpd_find_iface(ptp_clock->rtOpts.ifaceName, ptp_clock->portUuidField, net_path);
+	
+	// Configure network multicast MAC address
+	net_path->multicastMac[0] = DEFAULT_MULTICAST_MAC0;
+	net_path->multicastMac[1] = DEFAULT_MULTICAST_MAC1;
+	net_path->multicastMac[2] = DEFAULT_MULTICAST_MAC2;
+	net_path->multicastMac[3] = DEFAULT_MULTICAST_MAC3;
+	net_path->multicastMac[4] = DEFAULT_MULTICAST_MAC4;
+	net_path->multicastMac[5] = DEFAULT_MULTICAST_MAC5;
+	
+	// Configure network multicast MAC address
+	net_path->peerMulticastMac[0] = PEER_MULTICAST_MAC0;
+	net_path->peerMulticastMac[1] = PEER_MULTICAST_MAC1;
+	net_path->peerMulticastMac[2] = PEER_MULTICAST_MAC2;
+	net_path->peerMulticastMac[3] = PEER_MULTICAST_MAC3;
+	net_path->peerMulticastMac[4] = PEER_MULTICAST_MAC4;
+	net_path->peerMulticastMac[5] = PEER_MULTICAST_MAC5;
+	
+  // Configure network (broadcast/unicast) MAC addresses (unicast disabled).
+  net_path->unicastMac[0] = 0;
+	net_path->unicastMac[1] = 0;
+	net_path->unicastMac[2] = 0;
+	net_path->unicastMac[3] = 0;
+	net_path->unicastMac[4] = 0;
+	net_path->unicastMac[5] = 0;
+
+	// Configure ptp event and general message handlers
+	ptpd_pcb_event.recv = ptpd_net_event_callback;
+	ptpd_pcb_event.recv_arg = net_path;
+	
+	ptpd_pcb_general.recv = ptpd_net_general_callback;
+	ptpd_pcb_general.recv_arg = net_path;
+	
+  // Return success.
+  return true;
+	
+}
+
+// Shut down PowerProfile
+bool ptpd_net_shutdown(NetPath *net_path)
+{
+
+  DBG("ptpd_net_shutdown\n");
+
+  // Clear the network addresses.
+  net_path->multicastMac[0] = 0;
+	net_path->multicastMac[1] = 0;
+	net_path->multicastMac[2] = 0;
+	net_path->multicastMac[3] = 0;
+	net_path->multicastMac[4] = 0;
+	net_path->multicastMac[5] = 0;
+
+	net_path->peerMulticastMac[0] = 0;
+	net_path->peerMulticastMac[1] = 0;
+	net_path->peerMulticastMac[2] = 0;
+	net_path->peerMulticastMac[3] = 0;
+	net_path->peerMulticastMac[4] = 0;
+	net_path->peerMulticastMac[5] = 0;
+	
+  net_path->unicastMac[0] = 0;
+	net_path->unicastMac[1] = 0;
+	net_path->unicastMac[2] = 0;
+	net_path->unicastMac[3] = 0;
+	net_path->unicastMac[4] = 0;
+	net_path->unicastMac[5] = 0;
+
+	// Clear ptp event and general message handlers
+	ptpd_pcb_event.recv = NULL;
+	ptpd_pcb_event.recv_arg = NULL;
+	
+	ptpd_pcb_general.recv = NULL;
+	ptpd_pcb_general.recv_arg = NULL;
+
+  // Return success.
+  return true;
+}
+
+// PTP Power Profile message handler
+void ptpd_net_input(struct pbuf *p, struct netif *netif) {
+	
+	// Taking MsgType field from header to check the PTP message type
+	MsgHeader * msghdr = (MsgHeader *)p->payload;
+	uint8_t msgType = (*(enum4bit_t*)(msghdr + 0)) & 0x0F;
+	switch (msgType) {
+		
+		/* If event message */
+		case 0x0:
+		case 0x1:
+		case 0x2:
+		case 0x3:
+			
+		  /* callback */
+      if (ptpd_pcb_event.recv != NULL) {
+        /* now the recv function is responsible for freeing p */
+        ptpd_pcb_event.recv(ptpd_pcb_event.recv_arg, p);
+      } else {
+        /* no recv function registered? then we have to free the pbuf! */
+        pbuf_free(p);
+      }
+		
+			break;
+		
+		/* If general message */
+		case 0x8:
+		case 0x9:
+		case 0xA:
+		case 0xB:
+		case 0xC:
+		case 0xD:
+			
+			/* callback */
+      if (ptpd_pcb_general.recv != NULL) {
+        /* now the recv function is responsible for freeing p */
+        ptpd_pcb_general.recv(ptpd_pcb_general.recv_arg, p);
+      } else {
+        /* no recv function registered? then we have to free the pbuf! */
+        pbuf_free(p);
+      }
+		
+			break;
+	}
+		
+	
+}
+
+#endif
+
 // Wait for a packet  to come in on either port.  For now, there is no wait.
 // Simply check to  see if a packet is available on either port and return 1,
 // otherwise return 0.
@@ -364,6 +564,8 @@ ssize_t ptpd_net_recv_general(NetPath *net_path, octet_t *buf, TimeInternal *tim
   return ptpd_net_recv(buf, time, &net_path->generalQ);
 }
 
+#ifndef PTPD_POWER_PROFILE
+
 static ssize_t ptpd_net_send(const octet_t *buf, int16_t  length, TimeInternal *time, const int32_t * addr, struct udp_pcb * pcb)
 {
   err_t result;
@@ -425,24 +627,115 @@ fail01:
   return length;
 }
 
+#else
+
+// Send function for Power Profile
+static ssize_t ptpd_net_send(const octet_t *buf, int16_t  length, TimeInternal *time, const uint8_t * addr)
+{
+  err_t result;
+  struct pbuf *p;
+
+  // Allocate the tx pbuf based on the current size.
+  p = pbuf_alloc(PBUF_TRANSPORT, length, PBUF_RAM);
+  if (NULL == p)
+  {
+    syslog_printf(SYSLOG_ERROR, "PTPD: failed to allocate transmit protocol buffer");
+    ERROR("PTPD: Failed to allocate transmit protocol buffer\n");
+    goto fail01;
+  }
+
+  // Copy the incoming data into the pbuf payload.
+  result = pbuf_take(p, buf, length);
+  if (ERR_OK != result)
+  {
+    syslog_printf(SYSLOG_ERROR, "PTPD: failed to copy data into protocol buffer (%d)", result);
+    ERROR("PTPD: Failed to copy data into protocol buffer (%d)\n", result);
+    length = 0;
+    goto fail02;
+  }
+
+	//struct netif * netif = netif_find("st");
+	// Use default interface
+	struct netif * netif = netif_default;
+	
+	
+  // Send the buffer.
+	result = ethernet_output(netif, p, (struct eth_addr *)(netif->hwaddr), (struct eth_addr *)(addr), ETHTYPE_PTP);
+  if (ERR_OK != result)
+  {
+    syslog_printf(SYSLOG_ERROR, "PTPD: failed to send data (%d)", result);
+    ERROR("PTPD: Failed to send data (%d)\n", result);
+    length = 0;
+    goto fail02;
+  }
+
+#if defined(STM32F4) || defined(STM32F7)
+  // Fill in the timestamp of the buffer just sent.
+  if (time != NULL)
+  {
+    // We have special call back into the Ethernet interface to fill the timestamp
+    // of the buffer just transmitted. This call will block for up to a certain amount
+    // of time before it may fail if a timestamp was not obtained.
+    ethernetif_get_tx_timestamp(p);
+  }
+#endif
+
+  // Get the timestamp of the sent buffer.  We avoid overwriting 
+  // the time if it looks to be an invalid zero value.
+  if ((time != NULL) && (p->time_sec != 0))
+  {
+    time->seconds = p->time_sec;
+    time->nanoseconds = p->time_nsec;
+    DBGV("PTPD: %d sec %d nsec\n", time->seconds, time->nanoseconds);
+  }
+
+fail02:
+  pbuf_free(p);
+
+fail01:
+  return length;
+}
+
+#endif
+
 ssize_t ptpd_net_send_event(NetPath *net_path, const octet_t *buf, int16_t  length, TimeInternal *time)
 {
+#ifndef PTPD_POWER_PROFILE
   return ptpd_net_send(buf, length, time, &net_path->multicastAddr, net_path->eventPcb);
+#else 
+	// For Power Profile
+	return ptpd_net_send(buf, length, time, net_path->multicastMac);
+#endif
 }
 
 ssize_t ptpd_net_send_peer_event(NetPath *net_path, const octet_t *buf, int16_t  length, TimeInternal* time)
 {
+#ifndef PTPD_POWER_PROFILE
   return ptpd_net_send(buf, length, time, &net_path->peerMulticastAddr, net_path->eventPcb);
+#else 
+	// For Power Profile
+	return ptpd_net_send(buf, length, time, net_path->peerMulticastMac);
+#endif
 }
 
 ssize_t ptpd_net_send_general(NetPath *net_path, const octet_t *buf, int16_t  length)
 {
+#ifndef PTPD_POWER_PROFILE
   return ptpd_net_send(buf, length, NULL, &net_path->multicastAddr, net_path->generalPcb);
+#else 
+	// For Power Profile
+	return ptpd_net_send(buf, length, NULL, net_path->multicastMac);
+#endif
 }
 
 ssize_t ptpd_net_send_peer_general(NetPath *net_path, const octet_t *buf, int16_t  length)
 {
+#ifndef PTPD_POWER_PROFILE
   return ptpd_net_send(buf, length, NULL, &net_path->peerMulticastAddr, net_path->generalPcb);
+#else 
+	// For Power Profile
+	return ptpd_net_send(buf, length, NULL, net_path->peerMulticastMac);
+#endif
 }
 
 #endif

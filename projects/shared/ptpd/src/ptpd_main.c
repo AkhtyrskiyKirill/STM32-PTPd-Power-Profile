@@ -3,6 +3,7 @@
 #include "ptpd.h"
 #include "syslog.h"
 #include "shell.h"
+#include "hal_system.h"
 
 #if LWIP_PTPD
 
@@ -11,6 +12,8 @@ static bool ptpd_slave_only = true;
 static PtpClock ptp_clock;
 static ForeignMasterRecord ptp_foreign_records[DEFAULT_MAX_FOREIGN_RECORDS];
 static sys_mbox_t ptp_alert_queue;
+
+void ptpd_PPS_enable(void);
 
 // Shell command to show the PTPD status.
 static bool ptpd_shell_ptpd(int argc, char **argv)
@@ -67,10 +70,16 @@ static bool ptpd_shell_ptpd(int argc, char **argv)
     case E2E:
       shell_puts("mode: end to end\n");
       shell_printf("path delay: %d nsec\n", ptp_clock.currentDS.meanPathDelay.nanoseconds);
+			shell_printf("Tms: %d sec %d nsec\n", ptp_clock.Tms.seconds, ptp_clock.Tms.nanoseconds);
+			shell_printf("Tsm: %d sec %d nsec\n", ptp_clock.Tsm.seconds, ptp_clock.Tsm.nanoseconds);
       break;
     case P2P:
       shell_puts("mode: peer to peer\n");
       shell_printf("path delay: %d nsec\n", ptp_clock.portDS.peerMeanPathDelay.nanoseconds);
+			shell_printf("t1: %d sec %d nsec\n", ptp_clock.pdelay_t1.seconds, ptp_clock.pdelay_t1.nanoseconds);
+			shell_printf("t2: %d sec %d nsec\n", ptp_clock.pdelay_t2.seconds, ptp_clock.pdelay_t2.nanoseconds);
+			shell_printf("t3: %d sec %d nsec\n", ptp_clock.pdelay_t3.seconds, ptp_clock.pdelay_t3.nanoseconds);
+			shell_printf("t4: %d sec %d nsec\n", ptp_clock.pdelay_t4.seconds, ptp_clock.pdelay_t4.nanoseconds);
       break;
     default:
       shell_puts("mode: unknown\n");
@@ -131,7 +140,8 @@ static void ptpd_thread(void *arg)
   ptp_clock.rtOpts.servo.ai = DEFAULT_AI;
   ptp_clock.rtOpts.maxForeignRecords = sizeof(ptp_foreign_records) / sizeof(ptp_foreign_records[0]);
   ptp_clock.rtOpts.stats = PTP_TEXT_STATS;
-  ptp_clock.rtOpts.delayMechanism = DEFAULT_DELAY_MECHANISM;
+  //ptp_clock.rtOpts.delayMechanism = DEFAULT_DELAY_MECHANISM;	// Delay mechanism E2E
+	ptp_clock.rtOpts.delayMechanism = P2P;	// Delay mechanism P2P
 
   // Initialize the foriegn records buffers.
   ptp_clock.foreignMasterDS.records = ptp_foreign_records;
@@ -215,6 +225,10 @@ void ptpd_init(bool slave_only)
     // Log the error.
     syslog_printf(SYSLOG_ERROR, "PTPD: failed to create alert queue mailbox");
   }
+	
+	// Enable 1PPS signal
+	ptpd_PPS_enable();
+	
 }
 
 // Notify the PTPD thread of a pending operation.
@@ -230,5 +244,21 @@ uint32_t ptpd_get_state(void)
   // Return the current PTPD state.
   return (uint32_t) ptp_clock.portDS.portState;
 }
+
+// Enable 1PPS output on PB5 pin
+void ptpd_PPS_enable(void) {
+	
+	// Set up PB5 pin as AF PP
+	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODE5_Msk, GPIO_MODER_MODE5_1);
+	CLEAR_BIT(GPIOB->OTYPER, GPIO_OTYPER_OT5);
+	MODIFY_REG(GPIOB->OSPEEDR, GPIO_OSPEEDR_OSPEED5_Msk, GPIO_OSPEEDR_OSPEED5_0 | GPIO_OSPEEDR_OSPEED5_1);
+	CLEAR_BIT(GPIOB->PUPDR, GPIO_PUPDR_PUPD5_0);
+	CLEAR_BIT(GPIOB->PUPDR, GPIO_PUPDR_PUPD5_1);
+	
+	// Configure PB5 alternative function AF11 (ETH_PPS_OUT)
+	MODIFY_REG(GPIOB->AFR[0], GPIO_AFRL_AFSEL5_Msk, GPIO_AFRL_AFSEL5_0 | GPIO_AFRL_AFSEL5_1 | GPIO_AFRL_AFSEL5_3);
+	
+}
+
 
 #endif // LWIP_PTPD

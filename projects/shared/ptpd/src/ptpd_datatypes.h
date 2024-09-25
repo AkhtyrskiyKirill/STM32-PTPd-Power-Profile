@@ -7,6 +7,8 @@
 #include "lwip/api.h"
 #include "ptpd_constants.h"
 
+#include "ptpd.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,16 +69,49 @@ typedef struct
 // Struct used to store network data.
 typedef struct
 {
+	
+	#ifndef PTPD_POWER_PROFILE
   int32_t unicastAddr;
   int32_t multicastAddr;
   int32_t peerMulticastAddr;
 
   struct udp_pcb *eventPcb;
   struct udp_pcb *generalPcb;
+	#else
+	
+	uint8_t multicastMac[6];
+	uint8_t unicastMac[6];
+	uint8_t peerMulticastMac[6];
+	
+	#endif
 
   BufQueue eventQ;
   BufQueue generalQ;
 } NetPath;
+
+#ifdef PTPD_POWER_PROFILE
+
+/** Function prototype for ptpd_net receive callback functions
+ * The callback is responsible for freeing the pbuf
+ * if it's not used any more.
+ *
+ * @param arg user supplied argument (ptpd_pcb.recv_arg)
+ * @param p the packet buffer that was received
+ */
+typedef void (*ptpd_recv_fn)(void *arg, struct pbuf *p);
+
+/** the PTP Power Profile protocol recieve control block */
+struct ptpd_pcb {
+
+/* Protocol specific PCB members */
+
+  /** receive callback function */
+  ptpd_recv_fn recv;
+  /** user-supplied argument for the recv callback */
+  void *recv_arg;
+};
+
+#endif
 
 // Define compiler specific symbols.
 #if defined (__GNUC__) && !defined (__ARMCC_VERSION)

@@ -28,6 +28,7 @@ void ptpd_clock_init(PtpClock *ptp_clock)
 
   // Default data set.
   ptp_clock->defaultDS.twoStepFlag = DEFAULT_TWO_STEP_FLAG;
+	//ptp_clock->defaultDS.twoStepFlag = false;
 
   // Init clockIdentity with MAC address and 0xFF and 0xFE. see spec 7.5.2.2.2.
   if ((CLOCK_IDENTITY_LENGTH == 8) && (PTP_UUID_LENGTH == 6))
