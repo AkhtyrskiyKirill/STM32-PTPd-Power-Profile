@@ -35,7 +35,8 @@ two devices were synchronized with an accuracy of no worse than ±100 ns.
 
 Authors of the project:  
 Akhtyrskiy Kirill  
-Kabirov Vagiz
+Kabirov Vagiz  
+Semenov Valerii
 
 If you want to contribute to the improvement and development of the project please 
 send comments, feature requests, bug reports, or patches.
